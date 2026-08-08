@@ -1,0 +1,17 @@
+# Applies to builds whose context is the repo root (backend/Dockerfile, per
+# infra/docker-compose.yml's `context: ..`) - Docker only reads one .dockerignore,
+# at the build context root, so backend-specific excludes live here too.
+
+.git
+frontend/
+ai/.venv/
+ai/notebooks/.ipynb_checkpoints/
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.pytest_cache/
+backend/data/uploads/*
+!backend/data/uploads/.gitkeep
+backend/.env
+*.env
+!*.env.example

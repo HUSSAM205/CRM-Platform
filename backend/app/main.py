@@ -3,10 +3,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.csrf import CSRFMiddleware
+from app.core.rate_limit import limiter
 from app.services.ws_manager import ws_manager
 
 settings = get_settings()
@@ -26,6 +29,9 @@ app = FastAPI(
     redoc_url=None,
     lifespan=lifespan,
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Middleware executes in reverse order of registration (last added = outermost), so
 # CORS is added last: it must wrap CSRFMiddleware to handle preflight OPTIONS requests

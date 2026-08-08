@@ -40,8 +40,9 @@ function NewConversationForm() {
       className="flex items-end gap-3"
     >
       <div>
-        <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">New message to</label>
+        <label htmlFor="new-conversation-member" className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">New message to</label>
         <select
+          id="new-conversation-member"
           value={memberId}
           onChange={(e) => setMemberId(e.target.value)}
           className="mt-1 w-56 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-50"

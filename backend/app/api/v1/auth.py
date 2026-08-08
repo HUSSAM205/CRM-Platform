@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.v1.deps import get_current_user, require_permission
 from app.core.config import get_settings
 from app.core.permissions import Permissions
+from app.core.rate_limit import limiter
 from app.core.security import create_token, decode_token, hash_password, hash_token, verify_password
 from app.db.session import get_db
 from app.models.invitation import Invitation
@@ -95,6 +96,7 @@ def _issue_session(db: Session, response: Response, user: User, request: Request
 
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/hour")
 def register(payload: RegisterRequest, response: Response, request: Request, db: Session = Depends(get_db)) -> UserRead:
     if db.scalar(select(User).where(User.email == payload.email)) is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "An account with this email already exists")
@@ -136,6 +138,7 @@ def register(payload: RegisterRequest, response: Response, request: Request, db:
 
 
 @router.post("/login", response_model=UserRead)
+@limiter.limit("10/minute")
 def login(payload: LoginRequest, response: Response, request: Request, db: Session = Depends(get_db)) -> UserRead:
     user = db.scalar(select(User).where(User.email == payload.email))
     if not user or not verify_password(payload.password, user.hashed_password):
@@ -286,6 +289,7 @@ def preview_invitation(token: str, db: Session = Depends(get_db)) -> InvitationP
 
 
 @router.post("/invitations/{token}/accept", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/hour")
 def accept_invitation(
     token: str, payload: AcceptInvitationRequest, response: Response, request: Request, db: Session = Depends(get_db)
 ) -> UserRead:

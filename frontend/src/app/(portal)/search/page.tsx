@@ -58,10 +58,11 @@ export default function SearchPage() {
         className="flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900"
       >
         <div>
-          <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">
+          <label htmlFor="search-q" className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">
             {smart ? "Describe what you're looking for" : "Keyword"}
           </label>
           <input
+            id="search-q"
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -71,8 +72,9 @@ export default function SearchPage() {
         </div>
         {!smart && (
           <div>
-            <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">Owner</label>
+            <label htmlFor="search-owner" className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">Owner</label>
             <select
+              id="search-owner"
               value={ownerId}
               onChange={(e) => setOwnerId(e.target.value)}
               className="mt-1 w-48 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-50"
@@ -110,29 +112,30 @@ export default function SearchPage() {
           ) : !results || results.length === 0 ? (
             <p className="text-sm text-neutral-500">No documents match your search.</p>
           ) : (
-            <table className="w-full text-left text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[500px] text-left text-sm">
               <thead>
                 <tr className="border-b border-neutral-200 text-neutral-500 dark:border-neutral-800">
-                  <th className="pb-2 font-medium">Title</th>
-                  <th className="pb-2 font-medium">Size</th>
-                  <th className="pb-2 font-medium">Updated</th>
-                  {submittedSmart && <th className="pb-2 font-medium">Match</th>}
-                  <th className="pb-2 font-medium">Access</th>
+                  <th className="px-2 pb-2 font-medium">Title</th>
+                  <th className="px-2 pb-2 font-medium">Size</th>
+                  <th className="px-2 pb-2 font-medium">Updated</th>
+                  {submittedSmart && <th className="px-2 pb-2 font-medium">Match</th>}
+                  <th className="px-2 pb-2 font-medium">Access</th>
                 </tr>
               </thead>
               <tbody>
                 {results.map((doc) => (
                   <tr key={doc.id} className="border-b border-neutral-100 last:border-0 dark:border-neutral-800/60">
-                    <td className="py-2">
+                    <td className="px-2 py-2">
                       <Link href={`/documents/${doc.id}`} className="font-medium text-neutral-900 hover:underline dark:text-neutral-50">
                         {doc.title}
                       </Link>
                       {doc.description && <p className="text-xs text-neutral-500">{doc.description}</p>}
                     </td>
-                    <td className="py-2 text-neutral-500">{formatBytes(doc.size_bytes)}</td>
-                    <td className="py-2 text-neutral-500">{new Date(doc.updated_at).toLocaleDateString()}</td>
+                    <td className="px-2 py-2 text-neutral-500">{formatBytes(doc.size_bytes)}</td>
+                    <td className="px-2 py-2 text-neutral-500">{new Date(doc.updated_at).toLocaleDateString()}</td>
                     {submittedSmart && (
-                      <td className="py-2">
+                      <td className="px-2 py-2">
                         <span
                           className={`rounded-full px-2 py-0.5 text-xs ${
                             doc.match_type === "semantic"
@@ -144,7 +147,7 @@ export default function SearchPage() {
                         </span>
                       </td>
                     )}
-                    <td className="py-2">
+                    <td className="px-2 py-2">
                       <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
                         {doc.my_permission}
                       </span>
@@ -153,6 +156,7 @@ export default function SearchPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </section>
       )}

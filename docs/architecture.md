@@ -13,6 +13,26 @@ The user wants a production-quality, full-stack CRM/document-collaboration platf
 
 Everything else below reflects decisions made deliberately (one approach per decision, not a menu), designed to be implemented incrementally in testable phases.
 
+## Build status (post Phase 6)
+
+All 6 phases below were implemented and verified (curl + browser for every phase, plus a
+backend pytest suite added in Phase 6). Two Phase 6 items originally scoped were
+consciously **not** done, in favor of the higher-value work above given a fixed time
+budget — flagging here rather than silently dropping them:
+
+- **Playwright E2E tests** — not added. The same critical flows (login, upload+share,
+  comment+notify, semantic search) were manually verified end-to-end in the browser
+  during each phase instead; that verification isn't repeatable/automated the way a
+  Playwright suite would be.
+- **OpenAPI→TypeScript codegen** — not wired up. Frontend types in
+  `frontend/src/lib/*/types.ts` are hand-written and were kept in sync with the backend
+  Pydantic schemas manually; there's no automated check that they stay that way.
+
+Also out of scope, both flagged explicitly to the user rather than assumed: the
+`StorageService` S3 adapter (`backend/app/services/storage_service.py`) was never
+implemented (local-disk only), and the Dockerfiles/`docker-compose.yml` were authored
+but never built/run (no Docker in this environment) — review before relying on them.
+
 ---
 
 ## 1. High-Level Architecture

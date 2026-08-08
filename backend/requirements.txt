@@ -12,6 +12,7 @@ python-multipart>=0.0.12
 aiofiles>=24.1,<25.0
 email-validator>=2.2,<3.0
 pgvector>=0.3,<0.4
+slowapi>=0.1.9,<0.2
 # CPU-only machines: install torch first from the smaller CPU wheel index to skip the
 # CUDA build, e.g. `pip install torch --index-url https://download.pytorch.org/whl/cpu`
 torch>=2.4,<3.0

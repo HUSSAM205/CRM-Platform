@@ -71,8 +71,9 @@ function ShareManager({ documentId, members }: { documentId: string; members: Or
         className="mt-4 flex flex-wrap items-end gap-3"
       >
         <div>
-          <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">Person</label>
+          <label htmlFor="share-person" className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">Person</label>
           <select
+            id="share-person"
             value={userId}
             onChange={(e) => setUserId(e.target.value)}
             className="mt-1 w-48 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-50"
@@ -86,8 +87,9 @@ function ShareManager({ documentId, members }: { documentId: string; members: Or
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">Permission</label>
+          <label htmlFor="share-permission" className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">Permission</label>
           <select
+            id="share-permission"
             value={permission}
             onChange={(e) => setPermission(e.target.value as (typeof PERMISSION_LEVELS)[number])}
             className="mt-1 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-50"
@@ -189,13 +191,14 @@ export function DocumentDetailClient({
               const formData = new FormData(e.currentTarget);
               uploadVersion.mutate(formData);
             }}
-            className="mt-4 flex items-end gap-3 border-t border-neutral-100 pt-4 dark:border-neutral-800"
+            className="mt-4 flex flex-wrap items-end gap-3 border-t border-neutral-100 pt-4 dark:border-neutral-800"
           >
             <div>
-              <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">
+              <label htmlFor="new-version-file" className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">
                 Upload new version
               </label>
               <input
+                id="new-version-file"
                 name="file"
                 type="file"
                 required
