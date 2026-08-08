@@ -1,9 +1,36 @@
+import Link from "next/link";
+
 import { InviteForm } from "@/components/auth/invite-form";
 import { getOrgMembers } from "@/lib/auth/get-org-members";
 import { getServerUser } from "@/lib/auth/get-server-user";
+import { activityText, getActivityFeed, getDashboardSummary } from "@/lib/dashboard/get-dashboard-data";
+
+function timeAgo(iso: string): string {
+  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+function StatTile({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+      <p className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">{value}</p>
+      <p className="mt-1 text-xs text-neutral-500">{label}</p>
+    </div>
+  );
+}
 
 export default async function DashboardPage() {
-  const [user, members] = await Promise.all([getServerUser(), getOrgMembers()]);
+  const [user, members, summary, activity] = await Promise.all([
+    getServerUser(),
+    getOrgMembers(),
+    getDashboardSummary(),
+    getActivityFeed(),
+  ]);
   if (!user) return null; // layout already redirects; keeps TypeScript happy
 
   return (
@@ -18,39 +45,52 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <section className="rounded-lg border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
-        <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">Team ({members.length})</h2>
-        <table className="mt-4 w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-neutral-200 text-neutral-500 dark:border-neutral-800">
-              <th className="pb-2 font-medium">Name</th>
-              <th className="pb-2 font-medium">Email</th>
-              <th className="pb-2 font-medium">Role</th>
-              <th className="pb-2 font-medium">Status</th>
-            </tr>
-          </thead>
-          <tbody>
+      {summary && (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+          <StatTile label="Documents" value={summary.document_count} />
+          <StatTile label="Team members" value={summary.member_count} />
+          <StatTile label="Comments (7d)" value={summary.comments_last_7_days} />
+          <StatTile label="Messages (7d)" value={summary.messages_last_7_days} />
+          <StatTile label="Unread notifications" value={summary.unread_notifications} />
+        </div>
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section className="rounded-lg border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+          <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">Recent activity</h2>
+          {activity.length === 0 ? (
+            <p className="mt-4 text-sm text-neutral-500">Nothing yet — activity will show up here.</p>
+          ) : (
+            <ul className="mt-4 space-y-3">
+              {activity.map((item) => (
+                <li key={item.id} className="text-sm">
+                  <span className="font-medium text-neutral-900 dark:text-neutral-50">{item.actor_name}</span>{" "}
+                  <span className="text-neutral-600 dark:text-neutral-400">{activityText(item)}</span>
+                  <span className="ml-2 text-xs text-neutral-400">{timeAgo(item.created_at)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="rounded-lg border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+          <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">Team ({members.length})</h2>
+          <ul className="mt-4 space-y-2">
             {members.map((member) => (
-              <tr key={member.id} className="border-b border-neutral-100 last:border-0 dark:border-neutral-800/60">
-                <td className="py-2 text-neutral-900 dark:text-neutral-50">{member.full_name}</td>
-                <td className="py-2 text-neutral-500">{member.email}</td>
-                <td className="py-2 text-neutral-500">{member.roles.join(", ")}</td>
-                <td className="py-2">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs ${
-                      member.is_active
-                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
-                        : "bg-neutral-100 text-neutral-500 dark:bg-neutral-800"
-                    }`}
-                  >
-                    {member.is_active ? "Active" : "Deactivated"}
-                  </span>
-                </td>
-              </tr>
+              <li key={member.id} className="flex items-center justify-between text-sm">
+                <span className="text-neutral-900 dark:text-neutral-50">{member.full_name}</span>
+                <span className="text-xs text-neutral-500">{member.roles.join(", ")}</span>
+              </li>
             ))}
-          </tbody>
-        </table>
-      </section>
+          </ul>
+          <Link
+            href="/documents"
+            className="mt-4 inline-block text-xs font-medium text-neutral-900 underline dark:text-neutral-50"
+          >
+            Browse documents →
+          </Link>
+        </section>
+      </div>
 
       {user.permissions.includes("user.invite") && (
         <section className="rounded-lg border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">

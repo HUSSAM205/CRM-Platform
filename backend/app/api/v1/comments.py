@@ -11,6 +11,7 @@ from app.models.comment import Comment, CommentMention
 from app.models.document import Document
 from app.models.user import User
 from app.schemas.comment import CommentCreateRequest, CommentRead
+from app.services import audit_service
 from app.services.notification_service import notify
 from app.services.permission_service import get_user_permissions
 
@@ -100,6 +101,11 @@ def create_comment(
     for user_id in watchers:
         notify(db, user_id, "comment", notification_payload)
 
+    audit_service.record(
+        db, organization_id=current_user.organization_id, actor_id=current_user.id, action="comment.created",
+        resource_type="document", resource_id=document.id, extra={"comment_id": str(comment.id)},
+    )
+
     db.commit()
     db.refresh(comment)
     return _comment_to_read(db, comment)
@@ -125,4 +131,8 @@ def delete_comment(
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You can only delete your own comments")
 
     comment.is_deleted = True
+    audit_service.record(
+        db, organization_id=current_user.organization_id, actor_id=current_user.id, action="comment.deleted",
+        resource_type="document", resource_id=document.id, extra={"comment_id": str(comment.id)},
+    )
     db.commit()

@@ -25,6 +25,7 @@ from app.schemas.auth import (
     RegisterRequest,
 )
 from app.schemas.user import UserRead
+from app.services import audit_service
 from app.services.auth_service import user_to_read
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -117,6 +118,16 @@ def register(payload: RegisterRequest, response: Response, request: Request, db:
     db.flush()
 
     db.add(UserRole(user_id=user.id, role_id=admin_role.id, organization_id=org.id))
+    db.flush()
+    ip = request.client.host if request.client else None
+    audit_service.record(
+        db, organization_id=org.id, actor_id=user.id, action="organization.created",
+        resource_type="organization", resource_id=org.id, extra={"name": org.name}, ip_address=ip,
+    )
+    audit_service.record(
+        db, organization_id=org.id, actor_id=user.id, action="user.registered",
+        resource_type="user", resource_id=user.id, extra={"email": user.email}, ip_address=ip,
+    )
     db.commit()
     db.refresh(user)
 
@@ -133,6 +144,11 @@ def login(payload: LoginRequest, response: Response, request: Request, db: Sessi
         raise HTTPException(status.HTTP_403_FORBIDDEN, "This account has been deactivated")
 
     user.last_login_at = datetime.now(timezone.utc)
+    audit_service.record(
+        db, organization_id=user.organization_id, actor_id=user.id, action="user.login",
+        resource_type="user", resource_id=user.id,
+        ip_address=request.client.host if request.client else None,
+    )
     db.commit()
 
     _issue_session(db, response, user, request)
@@ -213,6 +229,10 @@ def logout_all_devices(db: Session = Depends(get_db), current_user: User = Depen
     db.query(RefreshToken).filter(
         RefreshToken.user_id == current_user.id, RefreshToken.revoked_at.is_(None)
     ).update({"revoked_at": datetime.now(timezone.utc)})
+    audit_service.record(
+        db, organization_id=current_user.organization_id, actor_id=current_user.id,
+        action="user.logout_all", resource_type="user", resource_id=current_user.id,
+    )
     db.commit()
 
 
@@ -239,6 +259,12 @@ def create_invitation(
         expires_at=datetime.now(timezone.utc) + timedelta(days=INVITATION_TTL_DAYS),
     )
     db.add(invitation)
+    db.flush()
+    audit_service.record(
+        db, organization_id=current_user.organization_id, actor_id=current_user.id,
+        action="invitation.created", resource_type="invitation", resource_id=invitation.id,
+        extra={"email": invitation.email, "role": role.name},
+    )
     db.commit()
 
     # No email service is wired up yet, so the invite link is handed back directly for
@@ -283,6 +309,11 @@ def accept_invitation(
 
     db.add(UserRole(user_id=user.id, role_id=invitation.role_id, organization_id=invitation.organization_id))
     invitation.accepted_at = datetime.now(timezone.utc)
+    audit_service.record(
+        db, organization_id=invitation.organization_id, actor_id=user.id, action="user.joined",
+        resource_type="user", resource_id=user.id, extra={"via_invitation_id": str(invitation.id)},
+        ip_address=request.client.host if request.client else None,
+    )
     db.commit()
     db.refresh(user)
 

@@ -22,6 +22,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <Link href="/admin/users" className="hover:text-white">
                 Users
               </Link>
+              <Link href="/admin/audit-log" className="hover:text-white">
+                Audit log
+              </Link>
               <Link href="/dashboard" className="hover:text-white">
                 Back to portal
               </Link>

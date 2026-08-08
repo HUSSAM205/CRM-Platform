@@ -28,6 +28,9 @@ export default async function PortalLayout({ children }: { children: React.React
               <Link href="/messages" className="hover:text-neutral-900 dark:hover:text-neutral-50">
                 Messages
               </Link>
+              <Link href="/search" className="hover:text-neutral-900 dark:hover:text-neutral-50">
+                Search
+              </Link>
               {user.permissions.includes("admin.access") && (
                 <Link href="/admin/users" className="hover:text-neutral-900 dark:hover:text-neutral-50">
                   Admin

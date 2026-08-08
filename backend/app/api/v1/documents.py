@@ -20,6 +20,7 @@ from app.schemas.document import (
     DocumentUpdateRequest,
     DocumentVersionRead,
 )
+from app.services import audit_service
 from app.services.storage_service import get_storage_service
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -44,7 +45,7 @@ def _document_to_read(db: Session, document: Document, current_user: User) -> Do
     )
 
 
-def _accessible_documents_stmt(db: Session, current_user: User):
+def accessible_documents_stmt(db: Session, current_user: User):
     role_ids = select(UserRole.role_id).where(UserRole.user_id == current_user.id).scalar_subquery()
     accessible_ids = select(DocumentShare.document_id).where(
         or_(
@@ -99,6 +100,10 @@ async def upload_document(
     db.flush()
 
     document.current_version_id = version.id
+    audit_service.record(
+        db, organization_id=current_user.organization_id, actor_id=current_user.id, action="document.created",
+        resource_type="document", resource_id=document.id, extra={"title": document.title},
+    )
     db.commit()
     db.refresh(document)
 
@@ -111,7 +116,7 @@ def list_documents(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission(Permissions.DOCUMENT_VIEW)),
 ) -> list[DocumentListItem]:
-    stmt = _accessible_documents_stmt(db, current_user)
+    stmt = accessible_documents_stmt(db, current_user)
     if q:
         stmt = stmt.where(Document.search_vector.op("@@")(func.websearch_to_tsquery("english", q)))
     stmt = stmt.order_by(Document.updated_at.desc())
@@ -196,6 +201,11 @@ async def upload_new_version(
     db.flush()
 
     document.current_version_id = version.id
+    audit_service.record(
+        db, organization_id=current_user.organization_id, actor_id=current_user.id,
+        action="document.version_uploaded", resource_type="document", resource_id=document.id,
+        extra={"version_number": version.version_number},
+    )
     db.commit()
     db.refresh(document)
 
@@ -213,6 +223,10 @@ def update_document(
         document.title = payload.title
     if payload.description is not None:
         document.description = payload.description
+    audit_service.record(
+        db, organization_id=current_user.organization_id, actor_id=current_user.id, action="document.updated",
+        resource_type="document", resource_id=document.id,
+    )
     db.commit()
     db.refresh(document)
     return _document_to_read(db, document, current_user)
@@ -225,6 +239,10 @@ def delete_document(
     document: Document = Depends(require_document_access("manage")),
 ) -> None:
     document.is_deleted = True
+    audit_service.record(
+        db, organization_id=current_user.organization_id, actor_id=current_user.id, action="document.deleted",
+        resource_type="document", resource_id=document.id, extra={"title": document.title},
+    )
     db.commit()
 
 
@@ -292,6 +310,12 @@ def create_document_share(
         )
         db.add(share)
 
+    db.flush()
+    audit_service.record(
+        db, organization_id=current_user.organization_id, actor_id=current_user.id, action="document.shared",
+        resource_type="document", resource_id=document.id,
+        extra={"grantee_type": share.grantee_type, "grantee_id": str(share.grantee_id), "permission": share.permission},
+    )
     db.commit()
     db.refresh(share)
 
@@ -310,10 +334,16 @@ def create_document_share(
 def delete_document_share(
     share_id: uuid.UUID,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
     document: Document = Depends(require_document_access("manage")),
 ) -> None:
     share = db.get(DocumentShare, share_id)
     if not share or share.document_id != document.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Share not found")
     db.delete(share)
+    audit_service.record(
+        db, organization_id=current_user.organization_id, actor_id=current_user.id,
+        action="document.share_revoked", resource_type="document", resource_id=document.id,
+        extra={"grantee_type": share.grantee_type, "grantee_id": str(share.grantee_id)},
+    )
     db.commit()
