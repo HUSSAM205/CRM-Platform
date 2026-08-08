@@ -1,0 +1,31 @@
+# Frontend (Next.js)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/*.tsbuildinfo
+frontend/next-env.d.ts
+
+# Backend (Python)
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/.pytest_cache/
+backend/data/uploads/*
+!backend/data/uploads/.gitkeep
+
+# AI
+ai/.venv/
+ai/__pycache__/
+ai/models/
+ai/.ipynb_checkpoints/
+
+# Env files
+.env
+*.env.local
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
