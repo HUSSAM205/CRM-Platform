@@ -1,7 +1,7 @@
 import hashlib
 import uuid
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
@@ -21,6 +21,7 @@ from app.schemas.document import (
     DocumentVersionRead,
 )
 from app.services import audit_service
+from app.services.embedding_service import embed_document_sync
 from app.services.storage_service import get_storage_service
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -62,6 +63,7 @@ def accessible_documents_stmt(db: Session, current_user: User):
 
 @router.post("", response_model=DocumentRead, status_code=status.HTTP_201_CREATED)
 async def upload_document(
+    background_tasks: BackgroundTasks,
     title: str = Form(..., min_length=1, max_length=500),
     description: str | None = Form(default=None, max_length=2000),
     file: UploadFile = File(...),
@@ -106,6 +108,8 @@ async def upload_document(
     )
     db.commit()
     db.refresh(document)
+
+    background_tasks.add_task(embed_document_sync, document.id)
 
     return _document_to_read(db, document, current_user)
 
@@ -215,20 +219,28 @@ async def upload_new_version(
 @router.put("/{document_id}", response_model=DocumentRead)
 def update_document(
     payload: DocumentUpdateRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission(Permissions.DOCUMENT_EDIT)),
     document: Document = Depends(require_document_access("edit")),
 ) -> DocumentRead:
-    if payload.title is not None:
+    text_changed = False
+    if payload.title is not None and payload.title != document.title:
         document.title = payload.title
-    if payload.description is not None:
+        text_changed = True
+    if payload.description is not None and payload.description != document.description:
         document.description = payload.description
+        text_changed = True
     audit_service.record(
         db, organization_id=current_user.organization_id, actor_id=current_user.id, action="document.updated",
         resource_type="document", resource_id=document.id,
     )
     db.commit()
     db.refresh(document)
+
+    if text_changed:
+        background_tasks.add_task(embed_document_sync, document.id)
+
     return _document_to_read(db, document, current_user)
 
 

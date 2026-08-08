@@ -51,6 +51,7 @@ class DocumentListItem(BaseModel):
     mime_type: str | None
     size_bytes: int | None
     my_permission: str
+    match_type: str | None = None  # "keyword" | "semantic", set only by hybrid search
 
 
 class DocumentUpdateRequest(BaseModel):

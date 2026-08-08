@@ -1,6 +1,7 @@
 from app.models.audit_log import AuditLog
 from app.models.comment import Comment, CommentMention
 from app.models.document import Document, DocumentShare, DocumentTag, DocumentVersion, Folder, Tag
+from app.models.document_embedding import DocumentEmbedding
 from app.models.invitation import Invitation
 from app.models.messaging import Conversation, ConversationMember, Message
 from app.models.notification import Notification
@@ -16,6 +17,7 @@ __all__ = [
     "Conversation",
     "ConversationMember",
     "Document",
+    "DocumentEmbedding",
     "DocumentShare",
     "DocumentTag",
     "DocumentVersion",

@@ -17,6 +17,7 @@ export interface DocumentListItem {
   mime_type: string | null;
   size_bytes: number | null;
   my_permission: "view" | "comment" | "edit" | "manage";
+  match_type?: "keyword" | "semantic" | null;
 }
 
 export interface DocumentDetail {
