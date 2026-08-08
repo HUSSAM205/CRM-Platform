@@ -30,7 +30,9 @@ async function parseErrorMessage(res: Response): Promise<string> {
 async function request<T>(path: string, options: RequestInit = {}, isRetry = false): Promise<T> {
   const method = (options.method ?? "GET").toUpperCase();
   const headers = new Headers(options.headers);
-  if (options.body) headers.set("Content-Type", "application/json");
+  if (typeof options.body === "string") headers.set("Content-Type", "application/json");
+  // FormData bodies get no Content-Type here — the browser sets multipart/form-data
+  // with the correct boundary itself; setting it manually breaks the boundary.
   if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
     const csrf = getCsrfToken();
     if (csrf) headers.set("X-CSRF-Token", csrf);
@@ -70,4 +72,13 @@ export const apiClient = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "POST", body: body !== undefined ? JSON.stringify(body) : undefined }),
+  put: <T>(path: string, body?: unknown) =>
+    request<T>(path, { method: "PUT", body: body !== undefined ? JSON.stringify(body) : undefined }),
+  del: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  postForm: <T>(path: string, formData: FormData) => request<T>(path, { method: "POST", body: formData }),
 };
+
+/** Direct download URL for <a href> / window.open — the browser sends the auth cookie itself. */
+export function downloadUrl(path: string): string {
+  return `${API_URL}/api/v1${path}`;
+}
