@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
@@ -37,6 +38,16 @@ def create_token(subject: str, token_type: TokenType, extra_claims: dict[str, An
     if extra_claims:
         payload.update(extra_claims)
     return jwt.encode(payload, secret, algorithm=settings.jwt_algorithm)
+
+
+def hash_token(token: str) -> str:
+    """SHA-256 digest used to store/look up refresh tokens without keeping the raw secret at rest.
+
+    Unlike passwords, refresh tokens are already high-entropy random strings, so a fast
+    cryptographic hash (rather than a slow, memory-hard KDF like Argon2) is sufficient and
+    keeps refresh/logout lookups cheap.
+    """
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 def decode_token(token: str, token_type: TokenType) -> dict[str, Any] | None:

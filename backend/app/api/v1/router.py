@@ -1,10 +1,12 @@
 from fastapi import APIRouter
 
-from app.api.v1 import health
+from app.api.v1 import auth, health, users
 
 api_router = APIRouter()
 api_router.include_router(health.router)
+api_router.include_router(auth.router)
+api_router.include_router(users.router)
 
-# Additional routers (auth, users, roles, documents, comments, messages,
-# notifications, audit, search, dashboard, admin/*) are registered here as
-# each implementation phase lands.
+# Additional routers (roles, documents, comments, messages, notifications,
+# audit, search, dashboard, admin/*) are registered here as each
+# implementation phase lands.

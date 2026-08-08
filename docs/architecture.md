@@ -17,7 +17,7 @@ Everything else below reflects decisions made deliberately (one approach per dec
 
 ## 1. High-Level Architecture
 
-- **One Next.js app**, App Router, with route groups `(admin)`, `(portal)`, `(auth)` — two portals, one codebase, shared component/design-system library and shared auth/session logic.
+- **One Next.js app**, App Router, with an `admin/` segment (real URL prefix, so admin pages live at `/admin/*`), plus `(portal)` and `(auth)` route groups (organizational only — Next.js strips parenthesized segments from the URL, so portal pages live at the root, e.g. `/dashboard`) — two portals, one codebase, shared component/design-system library and shared auth/session logic.
 - **One FastAPI backend**, versioned REST API under `/api/v1`, with role- and resource-level permission dependencies enforced per route/router.
 - **PostgreSQL (Neon)** as system of record, including native full-text search (`tsvector`/GIN) — no separate search engine — plus `pgvector` for AI semantic search.
 - **Local-disk file storage** in dev behind an S3-shaped `StorageService` interface (swap to S3/R2 in prod via config only).
@@ -41,7 +41,7 @@ new crm/
 │   │   │   │   ├── notifications/
 │   │   │   │   ├── search/
 │   │   │   │   └── settings/profile/
-│   │   │   ├── (admin)/               # Admin portal
+│   │   │   ├── admin/                 # Admin portal (real segment -> /admin/*, not a route group)
 │   │   │   │   ├── layout.tsx         # Admin shell + admin/manager auth gate
 │   │   │   │   ├── users/ roles/ audit-log/ analytics/ org-settings/
 │   │   │   ├── (auth)/                # Unauthenticated: login/register/invite/forgot-password
@@ -205,7 +205,7 @@ Each phase boots and is testable end-to-end before moving to the next.
 
 - `backend/app/api/v1/deps.py` — RBAC + resource-level permission dependencies every protected route composes; gets the security contract right early.
 - `backend/alembic/versions/<baseline>` — encodes the full Section 3 schema; all backend work depends on this being correct.
-- `frontend/src/app/(admin)/layout.tsx` and `frontend/src/app/(portal)/layout.tsx` — the two auth-gated shells defining the portal split.
+- `frontend/src/app/admin/layout.tsx` and `frontend/src/app/(portal)/layout.tsx` — the two auth-gated shells defining the portal split.
 - `backend/app/services/storage_service.py` — local/S3 storage abstraction that uploads/downloads/versioning all funnel through.
 - `ai/ai_core/embeddings.py` — shared PyTorch inference module used by both the notebook and the FastAPI backend.
 - `frontend/src/lib/api-client.ts` — the single fetch wrapper handling cookies, CSRF, and 401-refresh-retry for the whole frontend.
