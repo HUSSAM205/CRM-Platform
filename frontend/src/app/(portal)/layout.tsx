@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { LogoutButton } from "@/components/auth/logout-button";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { getServerUser } from "@/lib/auth/get-server-user";
 import { SessionProvider } from "@/lib/auth/session-provider";
 
@@ -24,6 +25,9 @@ export default async function PortalLayout({ children }: { children: React.React
               <Link href="/documents" className="hover:text-neutral-900 dark:hover:text-neutral-50">
                 Documents
               </Link>
+              <Link href="/messages" className="hover:text-neutral-900 dark:hover:text-neutral-50">
+                Messages
+              </Link>
               {user.permissions.includes("admin.access") && (
                 <Link href="/admin/users" className="hover:text-neutral-900 dark:hover:text-neutral-50">
                   Admin
@@ -32,6 +36,7 @@ export default async function PortalLayout({ children }: { children: React.React
             </nav>
           </div>
           <div className="flex items-center gap-4 text-sm text-neutral-600 dark:text-neutral-400">
+            <NotificationBell />
             <span>{user.full_name}</span>
             <LogoutButton className="text-neutral-500 underline hover:text-neutral-900 dark:hover:text-neutral-50" />
           </div>

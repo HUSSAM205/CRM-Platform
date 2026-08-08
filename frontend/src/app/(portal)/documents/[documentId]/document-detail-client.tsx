@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiClient, ApiError, downloadUrl } from "@/lib/api-client";
 import type { OrgMember } from "@/lib/auth/get-org-members";
+import { CommentThread } from "@/components/comments/comment-thread";
 import { formatBytes, type DocumentDetail, type DocumentShare } from "@/lib/documents/types";
 
 const PERMISSION_LEVELS = ["view", "comment", "edit", "manage"] as const;
@@ -123,6 +124,7 @@ export function DocumentDetailClient({
   const [error, setError] = useState<string | null>(null);
   const canEdit = document.my_permission === "edit" || document.my_permission === "manage";
   const canManage = document.my_permission === "manage";
+  const canComment = document.my_permission !== "view";
 
   const uploadVersion = useMutation({
     mutationFn: (formData: FormData) => apiClient.postForm(`/documents/${document.id}/versions`, formData),
@@ -210,6 +212,8 @@ export function DocumentDetailClient({
           </form>
         )}
       </section>
+
+      <CommentThread documentId={document.id} members={members} canComment={canComment} />
 
       {canManage && <ShareManager documentId={document.id} members={members} />}
 

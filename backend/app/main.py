@@ -1,16 +1,30 @@
+import asyncio
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.csrf import CSRFMiddleware
+from app.services.ws_manager import ws_manager
 
 settings = get_settings()
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    # WebSocket pushes are triggered from sync route handlers running in FastAPI's
+    # threadpool; binding the loop here lets ws_manager hop back onto it safely.
+    ws_manager.bind_loop(asyncio.get_running_loop())
+    yield
+
 
 app = FastAPI(
     title=settings.app_name,
     docs_url="/api/v1/docs" if settings.debug else None,
     redoc_url=None,
+    lifespan=lifespan,
 )
 
 # Middleware executes in reverse order of registration (last added = outermost), so
