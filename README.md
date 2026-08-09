@@ -91,7 +91,47 @@ Tests run against the real database configured in `backend/.env`, each wrapped i
 
 ## Deployment
 
-Dockerfiles (`backend/Dockerfile`, `frontend/Dockerfile`) and a reference `infra/docker-compose.yml` (self-hosted Postgres + backend + frontend) are provided for a Docker-based deployment. They were authored but **not exercised** in this environment (no Docker available here — local dev uses Neon + `uvicorn`/`next dev` directly instead, see `docs/architecture.md`); review them before relying on them in production. See `infra/.env.example` for the required variables.
+Deployed as: **Render** (backend) + **Vercel** (frontend) + **Neon** (database, already in use for dev too). This is a monorepo, so both platforms need care about which subfolder they build from.
+
+### 1. Backend → Render
+
+The backend imports the sibling `ai/` package at startup (`backend/app/ai/embedding_client.py`, shared with the notebook — see `docs/architecture.md`). Render restricts a service to files *inside* its configured Root Directory, so **do not** set Root Directory to `backend` — that would hide `ai/` from it and the app would fail to start. Instead, leave Root Directory as the repo root and reference `backend/` explicitly in the commands:
+
+1. [render.com](https://render.com) → **New +** → **Web Service** → connect the `CRM-Platform` GitHub repo.
+2. **Root Directory:** leave blank (repo root)
+3. **Runtime:** Python 3
+4. **Build Command:** `pip install -r backend/requirements.txt`
+5. **Start Command:** `cd backend && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+6. **Environment variables:**
+   | Key | Value |
+   |---|---|
+   | `ENVIRONMENT` | `production` |
+   | `DEBUG` | `false` |
+   | `DATABASE_URL` | your Neon connection string (`postgresql+psycopg://...`) |
+   | `JWT_SECRET` | `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
+   | `REFRESH_SECRET` | (same, a different value) |
+   | `CORS_ORIGINS` | `["https://your-app.vercel.app"]` — fill in after step 2, then redeploy |
+   | `STORAGE_BACKEND` | `local` |
+   | `LOCAL_STORAGE_PATH` | `./data/uploads` |
+7. Create the service, note its URL (`https://your-backend.onrender.com`).
+
+**Known risks on Render's free tier:** the build installs `torch` + `sentence-transformers` (large — may hit build time limits), and loading the embedding model at runtime needs real memory (may hit the 512MB RAM cap on the free instance type). If the AI dependency causes build/OOM failures, the fastest fix is commenting `torch`/`sentence-transformers` out of `backend/requirements.txt` for this deploy — keyword search still works fully without them (`/search/semantic` degrades to keyword-only automatically, see `backend/app/api/v1/search.py`). Also: free-tier disk is **not persistent** — uploaded files won't survive a redeploy/restart (same tradeoff as GradTrack's Render setup).
+
+### 2. Frontend → Vercel
+
+1. [vercel.com](https://vercel.com) → **Add New** → **Project** → import the same GitHub repo.
+2. **Root Directory:** `frontend`
+3. Framework preset: Next.js (auto-detected).
+4. **Environment variable:** `NEXT_PUBLIC_API_URL` = the Render backend URL from step 1.
+5. Deploy, note the resulting URL (`https://your-app.vercel.app`).
+
+### 3. Close the loop
+
+Go back to the Render backend's env vars, set `CORS_ORIGINS` to `["https://your-app.vercel.app"]` (the real Vercel URL), and redeploy the backend. Frontend and backend are on different domains in this setup — cookies are configured `SameSite=None; Secure` in production specifically to support that (see `backend/app/api/v1/auth.py` and `backend/app/core/csrf.py`), so this cross-origin flow is expected to work, not a workaround.
+
+### Docker (alternative, self-hosted)
+
+Dockerfiles (`backend/Dockerfile`, `frontend/Dockerfile`) and a reference `infra/docker-compose.yml` (self-hosted Postgres + backend + frontend) are also provided. They were authored but **not exercised** in this environment (no Docker available here); review them before relying on them in production. See `infra/.env.example` for the required variables.
 
 ## Status
 

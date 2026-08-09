@@ -56,16 +56,22 @@ def _unique_slug(db: Session, name: str) -> str:
 
 def _set_session_cookies(response: Response, access_token: str, refresh_token: str) -> None:
     is_prod = settings.environment != "development"
+    # In dev, frontend and backend are same-site (localhost, different ports) so
+    # SameSite=Strict works. In production they're on different top-level domains
+    # (e.g. *.vercel.app calling *.onrender.com), which is fully cross-site - Strict
+    # (or even Lax) cookies simply wouldn't be sent at all. SameSite=None requires
+    # Secure, which is_prod already implies (HTTPS on both Render and Vercel).
+    samesite = "none" if is_prod else "strict"
     response.set_cookie(
-        ACCESS_COOKIE, access_token, httponly=True, secure=is_prod, samesite="strict",
+        ACCESS_COOKIE, access_token, httponly=True, secure=is_prod, samesite=samesite,
         max_age=settings.access_token_expire_minutes * 60, path="/",
     )
     response.set_cookie(
-        REFRESH_COOKIE, refresh_token, httponly=True, secure=is_prod, samesite="strict",
+        REFRESH_COOKIE, refresh_token, httponly=True, secure=is_prod, samesite=samesite,
         max_age=settings.refresh_token_expire_days * 86400, path="/api/v1/auth",
     )
     response.set_cookie(
-        CSRF_COOKIE, secrets.token_urlsafe(32), httponly=False, secure=is_prod, samesite="strict",
+        CSRF_COOKIE, secrets.token_urlsafe(32), httponly=False, secure=is_prod, samesite=samesite,
         max_age=settings.refresh_token_expire_days * 86400, path="/",
     )
 

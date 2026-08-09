@@ -43,6 +43,9 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Without this, browsers hide the X-CSRF-Token response header from frontend JS on
+    # cross-origin requests (e.g. Vercel calling Render) - see app/core/csrf.py.
+    expose_headers=["X-CSRF-Token"],
 )
 
 app.include_router(api_router, prefix="/api/v1")

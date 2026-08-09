@@ -10,10 +10,17 @@ export class ApiError extends Error {
   }
 }
 
-function getCsrfToken(): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(/(?:^|; )csrf_token=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : null;
+// The backend echoes the current csrf_token cookie value back as an X-CSRF-Token
+// *response* header on every request (see backend/app/core/csrf.py). We read it from
+// there rather than from document.cookie: cookies are only visible to JS on the domain
+// that set them, so once frontend and backend are on different domains in production
+// (e.g. Vercel calling Render), document.cookie can never see a cookie the backend set.
+// Reading from a response header works identically same-site (dev) or cross-site (prod).
+let cachedCsrfToken: string | null = null;
+
+function captureCsrfToken(res: Response): void {
+  const token = res.headers.get("X-CSRF-Token");
+  if (token) cachedCsrfToken = token;
 }
 
 async function parseErrorMessage(res: Response): Promise<string> {
@@ -33,9 +40,8 @@ async function request<T>(path: string, options: RequestInit = {}, isRetry = fal
   if (typeof options.body === "string") headers.set("Content-Type", "application/json");
   // FormData bodies get no Content-Type here — the browser sets multipart/form-data
   // with the correct boundary itself; setting it manually breaks the boundary.
-  if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
-    const csrf = getCsrfToken();
-    if (csrf) headers.set("X-CSRF-Token", csrf);
+  if (!["GET", "HEAD", "OPTIONS"].includes(method) && cachedCsrfToken) {
+    headers.set("X-CSRF-Token", cachedCsrfToken);
   }
 
   const res = await fetch(`${API_URL}/api/v1${path}`, {
@@ -43,18 +49,17 @@ async function request<T>(path: string, options: RequestInit = {}, isRetry = fal
     headers,
     credentials: "include",
   });
+  captureCsrfToken(res);
 
   if (res.status === 401 && !isRetry && path !== "/auth/refresh" && path !== "/auth/login") {
+    const refreshHeaders = new Headers();
+    if (cachedCsrfToken) refreshHeaders.set("X-CSRF-Token", cachedCsrfToken);
     const refreshed = await fetch(`${API_URL}/api/v1/auth/refresh`, {
       method: "POST",
       credentials: "include",
-      headers: (() => {
-        const h = new Headers();
-        const csrf = getCsrfToken();
-        if (csrf) h.set("X-CSRF-Token", csrf);
-        return h;
-      })(),
+      headers: refreshHeaders,
     });
+    captureCsrfToken(refreshed);
     if (refreshed.ok) {
       return request<T>(path, options, true);
     }
