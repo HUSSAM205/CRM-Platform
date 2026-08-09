@@ -1,8 +1,19 @@
-import { redirect } from "next/navigation";
+"use client";
 
-import { getServerUser } from "@/lib/auth/get-server-user";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export default async function Home() {
-  const user = await getServerUser();
-  redirect(user ? "/dashboard" : "/login");
+import { apiClient } from "@/lib/api-client";
+
+export default function Home() {
+  const router = useRouter();
+
+  useEffect(() => {
+    apiClient
+      .get("/users/me")
+      .then(() => router.replace("/dashboard"))
+      .catch(() => router.replace("/login"));
+  }, [router]);
+
+  return null;
 }

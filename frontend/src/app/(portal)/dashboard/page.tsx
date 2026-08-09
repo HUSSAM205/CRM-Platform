@@ -1,9 +1,13 @@
+"use client";
+
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 
 import { InviteForm } from "@/components/auth/invite-form";
+import { apiClient } from "@/lib/api-client";
 import { getOrgMembers } from "@/lib/auth/get-org-members";
-import { getServerUser } from "@/lib/auth/get-server-user";
-import { activityText, getActivityFeed, getDashboardSummary } from "@/lib/dashboard/get-dashboard-data";
+import { useUser } from "@/lib/auth/session-provider";
+import { activityText, type ActivityItem, type DashboardSummary } from "@/lib/dashboard/get-dashboard-data";
 
 function timeAgo(iso: string): string {
   const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -24,14 +28,19 @@ function StatTile({ label, value }: { label: string; value: number }) {
   );
 }
 
-export default async function DashboardPage() {
-  const [user, members, summary, activity] = await Promise.all([
-    getServerUser(),
-    getOrgMembers(),
-    getDashboardSummary(),
-    getActivityFeed(),
-  ]);
-  if (!user) return null; // layout already redirects; keeps TypeScript happy
+export default function DashboardPage() {
+  const user = useUser();
+  const { data: members = [] } = useQuery({ queryKey: ["org-members"], queryFn: getOrgMembers });
+  const { data: summary } = useQuery({
+    queryKey: ["dashboard-summary"],
+    queryFn: () => apiClient.get<DashboardSummary>("/dashboard/summary"),
+  });
+  const { data: activity = [] } = useQuery({
+    queryKey: ["dashboard-activity"],
+    queryFn: () => apiClient.get<ActivityItem[]>("/dashboard/activity-feed"),
+  });
+
+  if (!user) return null;
 
   return (
     <div className="space-y-8">

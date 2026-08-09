@@ -1,8 +1,12 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+
 import { InviteForm } from "@/components/auth/invite-form";
 import { getOrgMembers } from "@/lib/auth/get-org-members";
 
-export default async function AdminUsersPage() {
-  const members = await getOrgMembers();
+export default function AdminUsersPage() {
+  const { data: members = [] } = useQuery({ queryKey: ["org-members"], queryFn: getOrgMembers });
 
   return (
     <div className="space-y-8">

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiClient, ApiError, downloadUrl } from "@/lib/api-client";
-import type { OrgMember } from "@/lib/auth/get-org-members";
+import { getOrgMembers, type OrgMember } from "@/lib/auth/get-org-members";
 import { CommentThread } from "@/components/comments/comment-thread";
 import { formatBytes, type DocumentDetail, type DocumentShare } from "@/lib/documents/types";
 
@@ -114,37 +114,45 @@ function ShareManager({ documentId, members }: { documentId: string; members: Or
   );
 }
 
-export function DocumentDetailClient({
-  document,
-  members,
-}: {
-  document: DocumentDetail;
-  members: OrgMember[];
-}) {
+export function DocumentDetailClient({ documentId }: { documentId: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
-  const canEdit = document.my_permission === "edit" || document.my_permission === "manage";
-  const canManage = document.my_permission === "manage";
-  const canComment = document.my_permission !== "view";
+
+  const {
+    data: document,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["document", documentId],
+    queryFn: () => apiClient.get<DocumentDetail>(`/documents/${documentId}`),
+  });
+  const { data: members = [] } = useQuery({ queryKey: ["org-members"], queryFn: getOrgMembers });
 
   const uploadVersion = useMutation({
-    mutationFn: (formData: FormData) => apiClient.postForm(`/documents/${document.id}/versions`, formData),
+    mutationFn: (formData: FormData) => apiClient.postForm(`/documents/${documentId}/versions`, formData),
     onSuccess: () => {
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["document", documentId] });
       queryClient.invalidateQueries({ queryKey: ["documents"] });
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : "Upload failed"),
   });
 
   const deleteDocument = useMutation({
-    mutationFn: () => apiClient.del(`/documents/${document.id}`),
+    mutationFn: () => apiClient.del(`/documents/${documentId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       router.push("/documents");
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : "Delete failed"),
   });
+
+  if (isLoading) return null;
+  if (isError || !document) return <p className="text-sm text-neutral-500">Document not found.</p>;
+
+  const canEdit = document.my_permission === "edit" || document.my_permission === "manage";
+  const canManage = document.my_permission === "manage";
+  const canComment = document.my_permission !== "view";
 
   return (
     <div className="space-y-8">
